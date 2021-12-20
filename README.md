@@ -191,6 +191,13 @@ python -m segm.train --log-dir seg_tiny_mask --dataset ade20k \
 
 To train `Seg-B-Mask/16`, simply set `vit_base_patch16_384` as backbone and launch the above command using a minimum of 4 V100 GPUs (~12 minutes per epoch) and up to 8 V100 GPUs (~7 minutes per epoch). The code uses [SLURM](https://slurm.schedmd.com/documentation.html) environment variables.
 
+Train with custom data:
+```python
+python -m segm.train --log-dir seg_tiny_mask --dataset enzo \
+    --dataset-dir /path/to/enzo_test \
+    --backbone vit_tiny_patch16_384 --decoder mask_transformer
+```
+
 ## Logs
 
 To plot the logs of your experiments, you can use

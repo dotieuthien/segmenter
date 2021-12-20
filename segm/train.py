@@ -27,6 +27,7 @@ from segm.engine import train_one_epoch, evaluate
 @click.command(help="")
 @click.option("--log-dir", type=str, help="logging directory")
 @click.option("--dataset", type=str)
+@click.option("--dataset-dir", default=None, type=str)
 @click.option("--im-size", default=None, type=int, help="dataset resize size")
 @click.option("--crop-size", default=None, type=int)
 @click.option("--window-size", default=None, type=int)
@@ -48,6 +49,7 @@ from segm.engine import train_one_epoch, evaluate
 def main(
     log_dir,
     dataset,
+    dataset_dir,
     im_size,
     crop_size,
     window_size,
@@ -161,23 +163,28 @@ def main(
     checkpoint_path = log_dir / "checkpoint.pth"
 
     # dataset
+    print('CREATING TRAIN LOADER ...')
     dataset_kwargs = variant["dataset_kwargs"]
-
+    if dataset_dir is not None:
+        dataset_kwargs["dataset_dir"] = dataset_dir
     train_loader = create_dataset(dataset_kwargs)
+
     val_kwargs = dataset_kwargs.copy()
-    val_kwargs["split"] = "val"
+    # val_kwargs["split"] = "val"
     val_kwargs["batch_size"] = 1
     val_kwargs["crop"] = False
     val_loader = create_dataset(val_kwargs)
     n_cls = train_loader.unwrapped.n_cls
 
     # model
+    print('CREATING TRAIN MODEL ...')
     net_kwargs = variant["net_kwargs"]
     net_kwargs["n_cls"] = n_cls
     model = create_segmenter(net_kwargs)
     model.to(ptu.device)
 
     # optimizer
+    print('CREATING TRAIN OPTIMIZER ...')
     optimizer_kwargs = variant["optimizer_kwargs"]
     optimizer_kwargs["iter_max"] = len(train_loader) * optimizer_kwargs["epochs"]
     optimizer_kwargs["iter_warmup"] = 0.0
@@ -228,7 +235,7 @@ def main(
     if hasattr(model, "module"):
         model_without_ddp = model.module
 
-    val_seg_gt = val_loader.dataset.get_gt_seg_maps()
+    # val_seg_gt = val_loader.dataset.get_gt_seg_maps()
 
     print(f"Train dataset length: {len(train_loader.dataset)}")
     print(f"Val dataset length: {len(val_loader.dataset)}")
@@ -237,15 +244,14 @@ def main(
 
     for epoch in range(start_epoch, num_epochs):
         # train for one epoch
-        train_logger = train_one_epoch(
-            model,
-            train_loader,
-            optimizer,
-            lr_scheduler,
-            epoch,
-            amp_autocast,
-            loss_scaler,
-        )
+        train_logger = train_one_epoch(model,
+                                       train_loader,
+                                       optimizer,
+                                       lr_scheduler,
+                                       epoch,
+                                       amp_autocast,
+                                       loss_scaler,
+                                       )
 
         # save checkpoint
         if ptu.dist_rank == 0:
@@ -260,19 +266,18 @@ def main(
             snapshot["epoch"] = epoch
             torch.save(snapshot, checkpoint_path)
 
-        # evaluate
-        eval_epoch = epoch % eval_freq == 0 or epoch == num_epochs - 1
-        if eval_epoch:
-            eval_logger = evaluate(
-                model,
-                val_loader,
-                val_seg_gt,
-                window_size,
-                window_stride,
-                amp_autocast,
-            )
-            print(f"Stats [{epoch}]:", eval_logger, flush=True)
-            print("")
+        # # evaluate
+        # eval_epoch = epoch % eval_freq == 0 or epoch == num_epochs - 1
+        # if eval_epoch:
+        #     eval_logger = evaluate(model,
+        #                            val_loader,
+        #                            val_seg_gt,
+        #                            window_size,
+        #                            window_stride,
+        #                            amp_autocast,
+        #                            )
+        #     print(f"Stats [{epoch}]:", eval_logger, flush=True)
+        #     print("")
 
         # log stats
         if ptu.dist_rank == 0:
@@ -280,10 +285,10 @@ def main(
                 k: meter.global_avg for k, meter in train_logger.meters.items()
             }
             val_stats = {}
-            if eval_epoch:
-                val_stats = {
-                    k: meter.global_avg for k, meter in eval_logger.meters.items()
-                }
+            # if eval_epoch:
+            #     val_stats = {
+            #         k: meter.global_avg for k, meter in eval_logger.meters.items()
+            #     }
 
             log_stats = {
                 **{f"train_{k}": v for k, v in train_stats.items()},

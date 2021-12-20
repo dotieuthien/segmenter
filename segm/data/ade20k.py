@@ -18,6 +18,7 @@ class ADE20KSegmentation(BaseMMSeg):
             ADE20K_CONFIG_PATH,
             **kwargs,
         )
+        print(ADE20K_CONFIG_PATH)
         self.names, self.colors = utils.dataset_cat_description(ADE20K_CATS_PATH)
         self.n_cls = 150
         self.ignore_label = 0

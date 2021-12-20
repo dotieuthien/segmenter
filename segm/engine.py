@@ -79,6 +79,7 @@ def evaluate(
 
     val_seg_pred = {}
     model.eval()
+
     for batch in logger.log_every(data_loader, print_freq, header):
         ims = [im.to(ptu.device) for im in batch["im"]]
         ims_metas = batch["im_metas"]

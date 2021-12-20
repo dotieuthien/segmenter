@@ -138,6 +138,7 @@ class BaseMMSeg(Dataset):
             if self.reduce_zero_label:
                 gt_seg_map[gt_seg_map != IGNORE_LABEL] -= 1
             gt_seg_maps[img_info["filename"]] = gt_seg_map
+
         return gt_seg_maps
 
     def __len__(self):

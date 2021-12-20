@@ -1,4 +1,5 @@
 model:
+
   # deit
   deit_tiny_distilled_patch16_224:
     image_size: 224
@@ -102,29 +103,43 @@ decoder:
     drop_path_rate: 0.0
     dropout: 0.1
     n_layers: 2
+
+# dataset
 dataset:
+  enzo:
+    epochs: 64
+    eval_freq: 2
+    batch_size: 1
+    learning_rate: 0.001
+    im_size: 224
+    crop_size: 224
+    window_size: 224
+    window_stride: 224
+
   ade20k:
     epochs: 64
     eval_freq: 2
-    batch_size: 8
+    batch_size: 1
     learning_rate: 0.001
     im_size: 512
     crop_size: 512
     window_size: 512
     window_stride: 512
+
   pascal_context:
     epochs: 256
     eval_freq: 8
-    batch_size: 16
+    batch_size: 1
     learning_rate: 0.001
     im_size: 520
     crop_size: 480
     window_size: 480
     window_stride: 320
+
   cityscapes:
     epochs: 216
     eval_freq: 4
-    batch_size: 8
+    batch_size: 1
     learning_rate: 0.01
     im_size: 1024
     crop_size: 768
