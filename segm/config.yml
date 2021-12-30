@@ -107,20 +107,20 @@ decoder:
 # dataset
 dataset:
   enzo:
-    epochs: 64
+    epochs: 300
     eval_freq: 2
     batch_size: 1
     learning_rate: 0.001
-    im_size: 224
-    crop_size: 224
-    window_size: 224
-    window_stride: 224
+    im_size: 768
+    crop_size: 768
+    window_size: 768
+    window_stride: 512
 
   ade20k:
     epochs: 64
     eval_freq: 2
     batch_size: 1
-    learning_rate: 0.001
+    learning_rate: 0.0001
     im_size: 512
     crop_size: 512
     window_size: 512

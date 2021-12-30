@@ -1,11 +1,14 @@
 import torch
 import math
+import numpy as np
+import matplotlib.pyplot as plt
 
 from segm.utils.logger import MetricLogger
 from segm.metrics import gather_data, compute_metrics
 from segm.model import utils
 from segm.data.utils import IGNORE_LABEL
 import segm.utils.torch as ptu
+from torchvision import transforms
 
 
 def train_one_epoch(
@@ -17,7 +20,8 @@ def train_one_epoch(
     amp_autocast,
     loss_scaler,
 ):
-    criterion = torch.nn.CrossEntropyLoss(ignore_index=IGNORE_LABEL)
+    weights = torch.tensor(data_loader.unwrapped.weighted_loss).float().to(ptu.device)
+    criterion = torch.nn.CrossEntropyLoss(reduction='mean', weight=weights)
     logger = MetricLogger(delimiter="  ")
     header = f"Epoch: [{epoch}]"
     print_freq = 100
@@ -31,6 +35,24 @@ def train_one_epoch(
 
         with amp_autocast():
             seg_pred = model.forward(im)
+            # Convert tensor to image
+            img_tensor = seg_pred[0]
+            img_tensor = img_tensor.argmax(0, keepdim=True)
+            np_img = img_tensor.cpu().detach().numpy()[0]
+            func = transforms.ToPILImage()
+            im_rgb = func(im[0])
+            print('Number of value in prediction ', np.unique(np_img))
+            np_seg = seg_gt.cpu().detach().numpy()[0]
+            print('Number of value in gt ', np.unique(np_seg))
+
+            # fig = plt.figure()
+            # fig.add_subplot(1, 3, 1)
+            # plt.imshow(im_rgb)
+            # fig.add_subplot(1, 3, 2)
+            # plt.imshow(np_img)
+            # fig.add_subplot(1, 3, 3)
+            # plt.imshow(np_seg)
+            # plt.show()
             loss = criterion(seg_pred, seg_gt)
 
         loss_value = loss.item()
@@ -38,6 +60,7 @@ def train_one_epoch(
             print("Loss is {}, stopping training".format(loss_value), force=True)
 
         optimizer.zero_grad()
+
         if loss_scaler is not None:
             loss_scaler(
                 loss,

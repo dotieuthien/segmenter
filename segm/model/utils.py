@@ -157,8 +157,10 @@ def inference(
     window_stride,
     batch_size,
 ):
+    # Number of class
     C = model.n_cls
     seg_map = torch.zeros((C, ori_shape[0], ori_shape[1]), device=ptu.device)
+
     for im, im_metas in zip(ims, ims_metas):
         im = im.to(ptu.device)
         im = resize(im, window_size)
@@ -168,9 +170,11 @@ def inference(
         B = len(crops)
         WB = batch_size
         seg_maps = torch.zeros((B, C, window_size, window_size), device=im.device)
+
         with torch.no_grad():
             for i in range(0, B, WB):
-                seg_maps[i : i + WB] = model.forward(crops[i : i + WB])
+                seg_maps[i: i + WB] = model.forward(crops[i: i + WB])
+
         windows["seg_maps"] = seg_maps
         im_seg_map = merge_windows(windows, window_size, ori_shape)
         seg_map += im_seg_map

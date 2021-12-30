@@ -9,9 +9,13 @@ from natsort import natsorted
 from PIL import Image
 import scipy.io as sio
 
+import torch
 from torch.utils.data import Dataset
 from torchvision import datasets
 from torchvision import transforms
+
+
+SLIDE_CATS_PATH = Path(__file__).parent / "config" / "slide.yml"
 
 
 def read_mat_file(path, img_size):
@@ -88,6 +92,7 @@ class SlideDataset(Dataset):
         # Get slide segment mask
         self.images_list = []
         self.masks_list = []
+        self.weighted_loss = np.array([0] * self.n_cls, dtype=np.float64)
 
         for img_path in images_list:
             img_name = os.path.basename(img_path)[:-4]
@@ -96,6 +101,14 @@ class SlideDataset(Dataset):
             if os.path.exists(label_path):
                 self.images_list.append(img_path)
                 self.masks_list.append(label_path)
+
+                # Read target label
+                target = read_mat_file(label_path, self.image_size)
+                uniques, counts = np.unique(target, return_counts=True)
+                counts = max(counts) / counts
+                self.weighted_loss[uniques] += counts
+        self.weighted_loss = self.weighted_loss / max(self.weighted_loss)
+        print(self.weighted_loss)
 
     @property
     def unwrapped(self):
@@ -111,7 +124,7 @@ class SlideDataset(Dataset):
 
         # Transform
         im = self.transform(im)
-        target = self.transform(target).squeeze(0)
+        target = torch.from_numpy(target).squeeze(0)
 
         return dict(im=im, segmentation=target)
 

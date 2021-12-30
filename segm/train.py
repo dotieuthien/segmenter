@@ -250,7 +250,7 @@ def main(
                                        lr_scheduler,
                                        epoch,
                                        amp_autocast,
-                                       loss_scaler,
+                                       None,
                                        )
 
         # save checkpoint
