@@ -19,6 +19,16 @@ from segm.model.utils import inference
 
 
 def load_img(img_path, img_size):
+    """Load and convert image into tensor batch for inference
+
+    Args:
+        img_path ([str]): path to tile image
+        img_size ([int]): image size to feedforward
+
+    Returns:
+        pil_im ([pil])
+        im ([tensor])
+    """
     transform = transforms.ToTensor()
     pil_im = Image.open(img_path)
     im = np.array(pil_im, dtype=np.uint8)
@@ -28,14 +38,24 @@ def load_img(img_path, img_size):
     return pil_im, im
 
 
-@click.command()
-@click.option("--model-path", type=str)
-@click.option("--input-dir", "-i", type=str, help="folder with input images")
-@click.option("--output-dir", "-o", type=str, help="folder with output images")
-@click.option("--gpu/--cpu", default=True, is_flag=True)
-def main(model_path, input_dir, output_dir, gpu):
+# @click.command()
+# @click.option("--model-path", type=str)
+# @click.option("--input-dir", "-i", type=str, help="folder with input images")
+# @click.option("--output-dir", "-o", type=str, help="folder with output images")
+# @click.option("--gpu/--cpu", default=True, is_flag=True)
+def process(model_path, input_dir, output_dir, gpu=True):
+    """Infer Segmenter model
+
+    Args:
+        model_path ([str]): [description]
+        input_dir ([str]): [description]
+        output_dir ([str]): [description]
+        gpu ([boolean]): [description]
+    Return:
+    """
     ptu.set_gpu_mode(gpu)
 
+    # Model
     model_dir = Path(model_path).parent
     model, variant = load_model(model_path)
     model.to(ptu.device)
@@ -49,6 +69,7 @@ def main(model_path, input_dir, output_dir, gpu):
     output_dir.mkdir(exist_ok=True)
 
     list_dir = list(input_dir.iterdir())
+
     for filename in tqdm(list_dir, ncols=80):
         # pil_im = Image.open(filename).copy()
         # im = F.pil_to_tensor(pil_im).float() / 255
@@ -67,14 +88,17 @@ def main(model_path, input_dir, output_dir, gpu):
             batch_size=1,
         )
         seg_map = logits.argmax(0, keepdim=True)
-        # seg = seg_map.cpu().detach().numpy().astype(np.uint8)
-        # print(np.unique(seg))
-        seg_rgb = seg_to_rgb(seg_map, cat_colors)
-        seg_rgb = (255 * seg_rgb.cpu().numpy()).astype(np.uint8)
-        pil_seg = Image.fromarray(seg_rgb[0])
-        pil_blend = Image.blend(pil_im, pil_seg, 0.5).convert("RGB")
-        pil_blend.save(output_dir / filename.name)
+        seg = seg_map.cpu().detach().numpy().astype(np.uint8)[0]
+        pil_seg = Image.fromarray(seg)
+        plt.imshow(pil_seg)
+        plt.show()
+        pil_seg.save(output_dir / filename.name)
+ 
+        # seg_rgb = seg_to_rgb(seg_map, cat_colors)
+        # seg_rgb = (255 * seg_rgb.cpu().numpy()).astype(np.uint8)
+        # pil_seg = Image.fromarray(seg_rgb[0])
 
-
-if __name__ == "__main__":
-    main()
+        # pil_seg.save(output_dir / filename.name)
+        # pil_blend = Image.blend(pil_im, pil_seg, 0.5).convert("RGB")
+        # pil_blend.save(output_dir / filename.name)
+    return

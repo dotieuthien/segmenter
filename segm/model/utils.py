@@ -66,6 +66,7 @@ def padding(im, patch_size, fill_value=0):
     # make the image sizes divisible by patch_size
     H, W = im.size(2), im.size(3)
     pad_h, pad_w = 0, 0
+
     if H % patch_size > 0:
         pad_h = patch_size - (H % patch_size)
     if W % patch_size > 0:
@@ -73,6 +74,7 @@ def padding(im, patch_size, fill_value=0):
     im_padded = im
     if pad_h > 0 or pad_w > 0:
         im_padded = F.pad(im, (0, pad_w, 0, pad_h), value=fill_value)
+    print('Image padded size ', im_padded.size())
     return im_padded
 
 
@@ -109,10 +111,13 @@ def sliding_window(im, flip, window_size, window_stride):
     ws = window_size
 
     windows = {"crop": [], "anchors": []}
+
     h_anchors = torch.arange(0, H, window_stride)
     w_anchors = torch.arange(0, W, window_stride)
+
     h_anchors = [h.item() for h in h_anchors if h < H - ws] + [H - ws]
     w_anchors = [w.item() for w in w_anchors if w < W - ws] + [W - ws]
+
     for ha in h_anchors:
         for wa in w_anchors:
             window = im[:, :, ha : ha + ws, wa : wa + ws]
@@ -120,6 +125,7 @@ def sliding_window(im, flip, window_size, window_stride):
             windows["anchors"].append((ha, wa))
     windows["flip"] = flip
     windows["shape"] = (H, W)
+    
     return windows
 
 

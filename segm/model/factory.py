@@ -40,6 +40,14 @@ def vit_base_patch8_384(pretrained=False, **kwargs):
 
 
 def create_vit(model_cfg):
+    """Create vision transformer model
+
+    Args:
+        model_cfg (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     model_cfg = model_cfg.copy()
     backbone = model_cfg.pop("backbone")
 
@@ -64,14 +72,18 @@ def create_vit(model_cfg):
         model_cfg["image_size"][0],
         model_cfg["image_size"][1],
     )
+
     model = VisionTransformer(**model_cfg)
+
     if backbone == "vit_base_patch8_384":
         path = os.path.expandvars("$TORCH_HOME/hub/checkpoints/vit_base_patch8_384.pth")
         state_dict = torch.load(path, map_location="cpu")
         filtered_dict = checkpoint_filter_fn(state_dict, model)
         model.load_state_dict(filtered_dict, strict=True)
+
     elif "deit" in backbone:
         load_pretrained(model, default_cfg, filter_fn=checkpoint_filter_fn)
+
     else:
         load_custom_pretrained(model, default_cfg)
 
@@ -86,6 +98,7 @@ def create_decoder(encoder, decoder_cfg):
 
     if "linear" in name:
         decoder = DecoderLinear(**decoder_cfg)
+
     elif name == "mask_transformer":
         dim = encoder.d_model
         n_heads = dim // 64
@@ -95,6 +108,7 @@ def create_decoder(encoder, decoder_cfg):
         decoder = MaskTransformer(**decoder_cfg)
     else:
         raise ValueError(f"Unknown decoder: {name}")
+        
     return decoder
 
 

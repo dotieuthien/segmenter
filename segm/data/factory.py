@@ -20,7 +20,7 @@ def create_dataset(dataset_kwargs):
         dataset_kwargs.pop("patch_size")
         dataset = ImagenetDataset(split=split, **dataset_kwargs)
 
-    elif dataset_name == "enzo":
+    elif dataset_name == "lizard":
         dataset = SlideDataset(split=split, **dataset_kwargs)
 
     elif dataset_name == "ade20k":

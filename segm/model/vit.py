@@ -19,8 +19,10 @@ class PatchEmbedding(nn.Module):
         super().__init__()
 
         self.image_size = image_size
+
         if image_size[0] % patch_size != 0 or image_size[1] % patch_size != 0:
             raise ValueError("image dimensions must be divisible by the patch size")
+            
         self.grid_size = image_size[0] // patch_size, image_size[1] // patch_size
         self.num_patches = self.grid_size[0] * self.grid_size[1]
         self.patch_size = patch_size
@@ -32,6 +34,7 @@ class PatchEmbedding(nn.Module):
     def forward(self, im):
         B, C, H, W = im.shape
         x = self.proj(im).flatten(2).transpose(1, 2)
+
         return x
 
 
@@ -68,6 +71,7 @@ class VisionTransformer(nn.Module):
         # cls and pos tokens
         self.cls_token = nn.Parameter(torch.zeros(1, 1, d_model))
         self.distilled = distilled
+
         if self.distilled:
             self.dist_token = nn.Parameter(torch.zeros(1, 1, d_model))
             self.pos_embed = nn.Parameter(
@@ -91,6 +95,7 @@ class VisionTransformer(nn.Module):
 
         trunc_normal_(self.pos_embed, std=0.02)
         trunc_normal_(self.cls_token, std=0.02)
+
         if self.distilled:
             trunc_normal_(self.dist_token, std=0.02)
         self.pre_logits = nn.Identity()
@@ -110,7 +115,9 @@ class VisionTransformer(nn.Module):
         PS = self.patch_size
 
         x = self.patch_embed(im)
+        print('Size of patch emb ', x.size())
         cls_tokens = self.cls_token.expand(B, -1, -1)
+
         if self.distilled:
             dist_tokens = self.dist_token.expand(B, -1, -1)
             x = torch.cat((cls_tokens, dist_tokens, x), dim=1)
@@ -119,6 +126,7 @@ class VisionTransformer(nn.Module):
 
         pos_embed = self.pos_embed
         num_extra_tokens = 1 + self.distilled
+
         if x.shape[1] != pos_embed.shape[1]:
             pos_embed = resize_pos_embed(
                 pos_embed,

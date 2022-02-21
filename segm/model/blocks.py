@@ -88,8 +88,11 @@ class Block(nn.Module):
 
     def forward(self, x, mask=None, return_attention=False):
         y, attn = self.attn(self.norm1(x), mask)
+
         if return_attention:
             return attn
+
         x = x + self.drop_path(y)
         x = x + self.drop_path(self.mlp(self.norm2(x)))
+        
         return x

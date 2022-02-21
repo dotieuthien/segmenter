@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+from turtle import mode
 import yaml
 import json
 import numpy as np
@@ -22,6 +23,10 @@ from contextlib import suppress
 
 from segm.utils.distributed import sync_model
 from segm.engine import train_one_epoch, evaluate
+
+# monitor
+import neptune.new as neptune
+from neptune.new.types import File
 
 
 @click.command(help="")
@@ -77,6 +82,7 @@ def main(
     cfg = config.load_config()
     model_cfg = cfg["model"][backbone]
     dataset_cfg = cfg["dataset"][dataset]
+
     if "mask_transformer" in decoder:
         decoder_cfg = cfg["decoder"]["mask_transformer"]
     else:
@@ -103,12 +109,16 @@ def main(
     world_batch_size = dataset_cfg["batch_size"]
     num_epochs = dataset_cfg["epochs"]
     lr = dataset_cfg["learning_rate"]
+
     if batch_size:
         world_batch_size = batch_size
+
     if epochs:
         num_epochs = epochs
+
     if learning_rate:
         lr = learning_rate
+
     if eval_freq is None:
         eval_freq = dataset_cfg.get("eval_freq", 1)
 
@@ -117,6 +127,7 @@ def main(
 
     # experiment config
     batch_size = world_batch_size // ptu.world_size
+
     variant = dict(
         world_batch_size=world_batch_size,
         version="normal",
@@ -190,13 +201,16 @@ def main(
     optimizer_kwargs["iter_warmup"] = 0.0
     opt_args = argparse.Namespace()
     opt_vars = vars(opt_args)
+
     for k, v in optimizer_kwargs.items():
         opt_vars[k] = v
+
     optimizer = create_optimizer(opt_args, model)
     lr_scheduler = create_scheduler(opt_args, optimizer)
     num_iterations = 0
     amp_autocast = suppress
     loss_scaler = None
+
     if amp:
         amp_autocast = torch.cuda.amp.autocast
         loss_scaler = NativeScaler()
@@ -223,6 +237,7 @@ def main(
     variant["net_kwargs"] = net_kwargs
     variant["dataset_kwargs"] = dataset_kwargs
     log_dir.mkdir(parents=True, exist_ok=True)
+    
     with open(log_dir / "variant.yml", "w") as f:
         f.write(variant_str)
 
@@ -242,9 +257,17 @@ def main(
     print(f"Encoder parameters: {num_params(model_without_ddp.encoder)}")
     print(f"Decoder parameters: {num_params(model_without_ddp.decoder)}")
 
+    run = neptune.init(
+    project="dotieuthien9997/segmenter",
+    api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiIzNGEyMTkxMS0xZWE5LTQ3NGEtYjMyNS0zYThlYWYwNzY2YTEifQ==",
+    )
+    
+    params = {"backbone": model_cfg["backbone"], "decoder": model_cfg["decoder"]}
+    run["parameters"] = params
+
     for epoch in range(start_epoch, num_epochs):
         # train for one epoch
-        train_logger = train_one_epoch(model,
+        train_logger, neptune_stats = train_one_epoch(model,
                                        train_loader,
                                        optimizer,
                                        lr_scheduler,
@@ -284,6 +307,14 @@ def main(
             train_stats = {
                 k: meter.global_avg for k, meter in train_logger.meters.items()
             }
+
+            # Log neptune
+            run["train/loss"].log(neptune_stats['loss'])
+
+            if epoch % 10 == 0:
+                run['train/segmaps'].log(File.as_image(neptune_stats['segmap']))
+                run['train/segmaps'].log(File.as_image(neptune_stats['gtmap']))
+
             val_stats = {}
             # if eval_epoch:
             #     val_stats = {
@@ -299,7 +330,8 @@ def main(
 
             with open(log_dir / "log.txt", "a") as f:
                 f.write(json.dumps(log_stats) + "\n")
-
+                
+    run.stop()
     distributed.barrier()
     distributed.destroy_process()
     sys.exit(1)

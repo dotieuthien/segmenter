@@ -107,8 +107,8 @@ class SlideDataset(Dataset):
                 uniques, counts = np.unique(target, return_counts=True)
                 counts = max(counts) / counts
                 self.weighted_loss[uniques] += counts
+
         self.weighted_loss = self.weighted_loss / max(self.weighted_loss)
-        print(self.weighted_loss)
 
     @property
     def unwrapped(self):

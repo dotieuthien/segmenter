@@ -22,6 +22,7 @@ def train_one_epoch(
 ):
     weights = torch.tensor(data_loader.unwrapped.weighted_loss).float().to(ptu.device)
     criterion = torch.nn.CrossEntropyLoss(reduction='mean', weight=weights)
+    # criterion = torch.nn.CrossEntropyLoss(reduction='mean')
     logger = MetricLogger(delimiter="  ")
     header = f"Epoch: [{epoch}]"
     print_freq = 100
@@ -29,33 +30,39 @@ def train_one_epoch(
     model.train()
     data_loader.set_epoch(epoch)
     num_updates = epoch * len(data_loader)
+
     for batch in logger.log_every(data_loader, print_freq, header):
         im = batch["im"].to(ptu.device)
         seg_gt = batch["segmentation"].long().to(ptu.device)
 
         with amp_autocast():
             seg_pred = model.forward(im)
+
             # Convert tensor to image
             img_tensor = seg_pred[0]
             img_tensor = img_tensor.argmax(0, keepdim=True)
             np_img = img_tensor.cpu().detach().numpy()[0]
             func = transforms.ToPILImage()
             im_rgb = func(im[0])
+
             print('Number of value in prediction ', np.unique(np_img))
             np_seg = seg_gt.cpu().detach().numpy()[0]
             print('Number of value in gt ', np.unique(np_seg))
 
-            # fig = plt.figure()
-            # fig.add_subplot(1, 3, 1)
-            # plt.imshow(im_rgb)
-            # fig.add_subplot(1, 3, 2)
-            # plt.imshow(np_img)
-            # fig.add_subplot(1, 3, 3)
-            # plt.imshow(np_seg)
-            # plt.show()
+            # if epoch % 20 == 0:
+            #     fig = plt.figure()
+            #     fig.add_subplot(1, 3, 1)
+            #     plt.imshow(im_rgb)
+            #     fig.add_subplot(1, 3, 2)
+            #     plt.imshow(np_img)
+            #     fig.add_subplot(1, 3, 3)
+            #     plt.imshow(np_seg)
+            #     plt.show()
+
             loss = criterion(seg_pred, seg_gt)
 
         loss_value = loss.item()
+        
         if not math.isfinite(loss_value):
             print("Loss is {}, stopping training".format(loss_value), force=True)
 
@@ -81,7 +88,8 @@ def train_one_epoch(
             learning_rate=optimizer.param_groups[0]["lr"],
         )
 
-    return logger
+    neptune_stats = {'loss': loss_value, 'segmap': np_img, 'gtmap': np_seg}
+    return logger, neptune_stats
 
 
 @torch.no_grad()

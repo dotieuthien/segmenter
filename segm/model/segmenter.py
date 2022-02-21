@@ -31,18 +31,21 @@ class Segmenter(nn.Module):
 
     def forward(self, im):
         H_ori, W_ori = im.size(2), im.size(3)
+        # padding image to devide by patch size
         im = padding(im, self.patch_size)
         H, W = im.size(2), im.size(3)
 
         x = self.encoder(im, return_features=True)
+        print('Size of output of encoder ', x.size())
 
         # remove CLS/DIST tokens for decoding
         num_extra_tokens = 1 + self.encoder.distilled
         x = x[:, num_extra_tokens:]
 
         masks = self.decoder(x, (H, W))
-
-        masks = F.interpolate(masks, size=(H, W), mode="bilinear")
+        print('Size of output of decoder ', masks.size())
+        masks = F.interpolate(masks, size=(H, W), mode="nearest")
+        print('Size of output of interpolation ', masks.size())
         masks = unpadding(masks, (H_ori, W_ori))
 
         return masks
