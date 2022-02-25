@@ -41,13 +41,12 @@ def train_one_epoch(
         with amp_autocast():
             seg_pred = model.forward(im)
 
-            loss1 = criterion1(seg_pred, seg_gt).mean()
+            # loss1 = 10 * criterion1(seg_pred, seg_gt).mean()
 
-            loss2 = 10 * criterion2(seg_pred, seg_gt)
+            loss2 = criterion2(seg_pred, seg_gt)
             loss2 = hard_worst_loss(loss2, seg_gt)
 
-            loss = loss1 + loss2
-            print(loss1.item(), loss2.item())
+            loss = loss2
 
             # Convert input tensor to image
             func = transforms.ToPILImage()

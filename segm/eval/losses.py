@@ -28,7 +28,7 @@ def hard_worst_loss(loss, groundtruth):
     top_k_back_loss_idx = np.argsort(-back_loss.data.cpu().numpy())[:n_back_samples]
 
     back_loss = back_loss[top_k_back_loss_idx]
-
-    return fore_loss.mean() + back_loss.mean()
+    print(fore_loss.mean() * 10, back_loss.mean())
+    return fore_loss.mean() * 10 + back_loss.mean()
 
     # return (fore_loss.sum() + back_loss.sum()) / (fore_loss.size(0) + back_loss.size(0))
