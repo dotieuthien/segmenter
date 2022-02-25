@@ -23,8 +23,8 @@ def train_one_epoch(
     loss_scaler,
 ):
     weights = torch.tensor(data_loader.unwrapped.weighted_loss).float().to(ptu.device)
-    # criterion = torch.nn.CrossEntropyLoss(reduce=False, weight=weights)
-    criterion = torch.nn.CrossEntropyLoss(reduce=False)
+    criterion1 = torch.nn.CrossEntropyLoss(reduce=False, weight=weights)
+    criterion2 = torch.nn.CrossEntropyLoss(reduce=False)
 
     logger = MetricLogger(delimiter="  ")
     header = f"Epoch: [{epoch}]"
@@ -41,28 +41,36 @@ def train_one_epoch(
         with amp_autocast():
             seg_pred = model.forward(im)
 
-            loss = criterion(seg_pred, seg_gt).mean()
-            # seg_mask = torch.argmax(seg_pred, dim=1)
-            # seg_loss = criterion2(seg_mask, seg_gt.float())
-            # loss = class_loss + hard_worst_loss(seg_loss, seg_gt)
+            loss1 = 10 * criterion1(seg_pred, seg_gt).mean()
 
-            # Convert tensor to image
-            img_tensor = seg_pred[0]
-            img_tensor = img_tensor.argmax(0, keepdim=True)
-            np_img = img_tensor.cpu().detach().numpy()[0]
+            loss2 = criterion2(seg_pred, seg_gt)
+            loss2 = hard_worst_loss(loss2, seg_gt)
+
+            loss = loss1 + loss2
+            print(loss1.item(), loss2.item())
+
+            # Convert input tensor to image
             func = transforms.ToPILImage()
             im_rgb = func(im[0])
-            print('Number of value in prediction ', np.unique(np_img))
-            np_seg = seg_gt.cpu().detach().numpy()[0]
-            print('Number of value in gt ', np.unique(np_seg))
+
+            # Convert prediction to image
+            seg_pred_img = seg_pred[0]
+            seg_pred_img = seg_pred_img.argmax(0, keepdim=True)
+            seg_pred_img = seg_pred_img.cpu().detach().numpy()[0]
+            
+            # Convert groundtruth to image
+            seg_gt_img = seg_gt.cpu().detach().numpy()[0]
+
+            print('Number of value in prediction ', np.unique(seg_pred_img))
+            print('Number of value in gt ', np.unique(seg_gt_img))
 
             fig = plt.figure()
             fig.add_subplot(1, 3, 1)
             plt.imshow(im_rgb)
             fig.add_subplot(1, 3, 2)
-            plt.imshow(np_img)
+            plt.imshow(seg_pred_img)
             fig.add_subplot(1, 3, 3)
-            plt.imshow(np_seg)
+            plt.imshow(seg_gt_img)
             # plt.show()
 
         loss_value = loss.item()
@@ -92,7 +100,7 @@ def train_one_epoch(
             learning_rate=optimizer.param_groups[0]["lr"],
         )
 
-    neptune_stats = {'loss': loss_value, 'segmap': np_img, 'gtmap': np_seg, 'fig': fig}
+    neptune_stats = {'loss': loss_value, 'segmap': seg_pred_img, 'gtmap': seg_gt_img, 'fig': fig}
     return logger, neptune_stats
 
 

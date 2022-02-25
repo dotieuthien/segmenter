@@ -80,9 +80,9 @@ class DecoderUNet(nn.Module):
         self.bilinear = bilinear
 
         self.inc = DoubleConv(n_channels, n_channels)
-        factor = 2 if bilinear else 1
+        factor = 1 if bilinear else 1
         self.up1 = Up(n_channels, (n_channels // 2) // factor, bilinear)
-        self.up2 = Up((n_channels // 2), (n_channels // 4) // factor, bilinear)
+        self.up2 = Up((n_channels // 2), (n_channels // 4) // factor, bilinear=True)
         self.up3 = Up((n_channels // 4), (n_channels // 8) // factor, bilinear)
         self.up4 = Up((n_channels // 8), (n_channels // 16), bilinear)
         self.outc = OutConv((n_channels // 16), n_classes)
