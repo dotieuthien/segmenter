@@ -115,7 +115,6 @@ class VisionTransformer(nn.Module):
         PS = self.patch_size
 
         x = self.patch_embed(im)
-        print('Size of patch emb ', x.size())
         cls_tokens = self.cls_token.expand(B, -1, -1)
 
         if self.distilled:

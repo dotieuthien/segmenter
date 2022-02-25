@@ -24,7 +24,7 @@ def hard_worst_loss(loss, groundtruth):
     fore_loss = loss[foreground_idx]
     back_loss = loss[background_idx]
 
-    n_back_samples = min(foreground_idx.size(0) * 3, background_idx.size(0))
+    n_back_samples = min(foreground_idx.size(0), background_idx.size(0))
     top_k_back_loss_idx = np.argsort(-back_loss.data.cpu().numpy())[:n_back_samples]
 
     back_loss = back_loss[top_k_back_loss_idx]

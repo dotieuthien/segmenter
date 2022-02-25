@@ -74,7 +74,7 @@ def padding(im, patch_size, fill_value=0):
     im_padded = im
     if pad_h > 0 or pad_w > 0:
         im_padded = F.pad(im, (0, pad_w, 0, pad_h), value=fill_value)
-    print('Image padded size ', im_padded.size())
+
     return im_padded
 
 

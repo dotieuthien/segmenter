@@ -22,8 +22,8 @@ def train_one_epoch(
     amp_autocast,
     loss_scaler,
 ):
-    weights = torch.tensor(data_loader.unwrapped.weighted_loss).float().to(ptu.device)
-    criterion1 = torch.nn.CrossEntropyLoss(reduce=False, weight=weights)
+    # weights = torch.tensor(data_loader.unwrapped.weighted_loss).float().to(ptu.device)
+    criterion1 = torch.nn.CrossEntropyLoss(reduce=False, ignore_index=0)
     criterion2 = torch.nn.CrossEntropyLoss(reduce=False)
 
     logger = MetricLogger(delimiter="  ")
@@ -41,9 +41,9 @@ def train_one_epoch(
         with amp_autocast():
             seg_pred = model.forward(im)
 
-            loss1 = 10 * criterion1(seg_pred, seg_gt).mean()
+            loss1 = criterion1(seg_pred, seg_gt).mean()
 
-            loss2 = criterion2(seg_pred, seg_gt)
+            loss2 = 10 * criterion2(seg_pred, seg_gt)
             loss2 = hard_worst_loss(loss2, seg_gt)
 
             loss = loss1 + loss2
@@ -64,14 +64,6 @@ def train_one_epoch(
             print('Number of value in prediction ', np.unique(seg_pred_img))
             print('Number of value in gt ', np.unique(seg_gt_img))
 
-            fig = plt.figure()
-            fig.add_subplot(1, 3, 1)
-            plt.imshow(im_rgb)
-            fig.add_subplot(1, 3, 2)
-            plt.imshow(seg_pred_img)
-            fig.add_subplot(1, 3, 3)
-            plt.imshow(seg_gt_img)
-            # plt.show()
 
         loss_value = loss.item()
         
@@ -99,6 +91,15 @@ def train_one_epoch(
             loss=loss.item(),
             learning_rate=optimizer.param_groups[0]["lr"],
         )
+
+    fig = plt.figure()
+    fig.add_subplot(1, 3, 1)
+    plt.imshow(im_rgb)
+    fig.add_subplot(1, 3, 2)
+    plt.imshow(seg_pred_img)
+    fig.add_subplot(1, 3, 3)
+    plt.imshow(seg_gt_img)
+    # plt.show()
 
     neptune_stats = {'loss': loss_value, 'segmap': seg_pred_img, 'gtmap': seg_gt_img, 'fig': fig}
     return logger, neptune_stats

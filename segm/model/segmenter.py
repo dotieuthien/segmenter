@@ -36,12 +36,10 @@ class Segmenter(nn.Module):
         H, W = im.size(2), im.size(3)
 
         x = self.encoder(im, return_features=True)
-        print('Size of output of encoder ', x.size())
 
         # remove CLS/DIST tokens for decoding
         num_extra_tokens = 1 + self.encoder.distilled
         x = x[:, num_extra_tokens:]
-        print('Size of input of decoder ', x.size())
 
         masks = self.decoder(x, (H, W))
         # masks = F.interpolate(masks, size=(H, W), mode="nearest")
