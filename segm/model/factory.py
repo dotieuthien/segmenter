@@ -13,6 +13,7 @@ from timm.models.vision_transformer import _create_vision_transformer
 from segm.model.vit import VisionTransformer
 from segm.model.utils import checkpoint_filter_fn
 from segm.model.decoder import DecoderLinear
+from segm.model.fc_decoder import DecoderUNet
 from segm.model.decoder import MaskTransformer
 from segm.model.segmenter import Segmenter
 import segm.utils.torch as ptu
@@ -98,6 +99,9 @@ def create_decoder(encoder, decoder_cfg):
 
     if "linear" in name:
         decoder = DecoderLinear(**decoder_cfg)
+
+    elif 'unet' in name:
+        decoder = DecoderUNet()
 
     elif name == "mask_transformer":
         dim = encoder.d_model

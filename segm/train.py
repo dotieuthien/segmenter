@@ -39,7 +39,7 @@ from neptune.new.types import File
 @click.option("--window-stride", default=None, type=int)
 @click.option("--backbone", default="", type=str)
 @click.option("--decoder", default="", type=str)
-@click.option("--optimizer", default="sgd", type=str)
+@click.option("--optimizer", default="adam", type=str)
 @click.option("--scheduler", default="polynomial", type=str)
 @click.option("--weight-decay", default=0.0, type=float)
 @click.option("--dropout", default=0.0, type=float)
@@ -314,6 +314,7 @@ def main(
             if epoch % 10 == 0:
                 run['train/segmaps'].log(File.as_image(neptune_stats['segmap']))
                 run['train/segmaps'].log(File.as_image(neptune_stats['gtmap']))
+                run['train/matplotlib-fig'].log(neptune_stats['fig'])
 
             val_stats = {}
             # if eval_epoch:

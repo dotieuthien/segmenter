@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 
 
 def test_segmenter_infer():
-    model_path = '/mnt/d/segmenter/pretrained_weights/seg_base_mask/checkpoint.pth'
-    input_dir = '/mnt/d/segmenter/segm/data/enzo_test/images'
+    model_path = '/mnt/d/segmenter/runs/seg_tiny_unet_1/checkpoint.pth'
+    input_dir = '/mnt/d/segmenter/dataset/enzo_test_1/images'
     output_dir = '/mnt/d/segmenter/segmaps'
     segmenter_infer(model_path, input_dir, output_dir)
 
@@ -41,11 +41,11 @@ def get_label_gt():
 
 
 if __name__ == "__main__":
-    # test_segmenter_infer()
+    test_segmenter_infer()
     # show image
-    image = cv2.imread('/mnt/d/segmenter/segmaps/consep_1.png', 0)
-    plt.imshow(image)
-    plt.show()
+    # image = cv2.imread('/mnt/d/segmenter/segmaps/consep_1.png', 0)
+    # plt.imshow(image)
+    # plt.show()
 
     # test_nuclei_infer()
     # get_label_gt()
