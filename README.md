@@ -1,6 +1,6 @@
 # Segmenter: Transformer for Semantic Segmentation
 
-![Figure 1 from paper](./overview.png)
+![Figure 1 from paper](./imgs/overview.png)
 
 [Segmenter: Transformer for Semantic Segmentation](https://arxiv.org/abs/2105.05633)
 by Robin Strudel*, Ricardo Garcia*, Ivan Laptev and Cordelia Schmid, ICCV 2021.
@@ -20,12 +20,12 @@ To download ADE20K, use the following command:
 python -m segm.scripts.prepare_ade20k $DATASET
 ```
 
-## Model Zoo
+<!-- ## Model Zoo
 We release models with a Vision Transformer backbone initialized from the [improved ViT](https://arxiv.org/abs/2106.10270) models.
 
-### ADE20K
+### ADE20K -->
 
-Segmenter models with ViT backbone:
+<!-- Segmenter models with ViT backbone:
 <table>
   <tr>
     <th>Name</th>
@@ -162,7 +162,7 @@ Segmenter models with DeiT backbone:
     <td><a href="https://www.rocq.inria.fr/cluster-willow/rstrudel/segmenter/checkpoints/cityscapes/seg_large_mask/variant.yml">config</a></td>
     <td><a href="https://www.rocq.inria.fr/cluster-willow/rstrudel/segmenter/checkpoints/cityscapes/seg_large_mask/log.txt">log</a></td>
   </tr>
-</table>
+</table> -->
 
 ## Inference
 
@@ -181,7 +181,7 @@ python -m segm.eval.miou seg_tiny_mask/checkpoint.pth ade20k --singlescale
 python -m segm.eval.miou seg_tiny_mask/checkpoint.pth ade20k --multiscale
 ```
 
-## Train
+## Train with ADE20K dataset
 
 Train `Seg-T-Mask/16` on ADE20K on a single GPU:
 ```python
@@ -191,7 +191,9 @@ python -m segm.train --log-dir seg_tiny_mask --dataset ade20k \
 
 To train `Seg-B-Mask/16`, simply set `vit_base_patch16_384` as backbone and launch the above command using a minimum of 4 V100 GPUs (~12 minutes per epoch) and up to 8 V100 GPUs (~7 minutes per epoch). The code uses [SLURM](https://slurm.schedmd.com/documentation.html) environment variables.
 
-## Train with Lizard dataset:
+## Train with Lizard dataset
+With the configuration `segm/config.yml`, you can change the parameters to train the model
+
 ```python
 python -m segm.train --log-dir runs/seg_tiny_unet \
   --dataset lizard \
@@ -239,11 +241,11 @@ images/im0.jpg output_dir/ --layer-id 0 --dec --cls
 
 Attention maps for patch `(0, 21)` in `Seg-L-Mask/16` encoder layers 1, 4, 8, 12 and 16: 
 
-![Attention maps of patch x=8 and y=21 and encoder layers 1, 4, 8, 12 and 16](./attn_maps_enc.png)
+![Attention maps of patch x=8 and y=21 and encoder layers 1, 4, 8, 12 and 16](./imgs/attn_maps_enc.png)
 
 Attention maps for the class embeddings in `Seg-L-Mask/16` decoder layer 0: 
 
-![Attention maps of cls tokens 7, 15, 18, 22, 36 and 57 and Mask decoder layer 0](./attn_maps_dec.png)
+![Attention maps of cls tokens 7, 15, 18, 22, 36 and 57 and Mask decoder layer 0](./imgs/attn_maps_dec.png)
 
 ## Video Segmentation
 
