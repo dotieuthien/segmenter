@@ -22,9 +22,12 @@ def train_one_epoch(
     amp_autocast,
     loss_scaler,
 ):
-    # weights = torch.tensor(data_loader.unwrapped.weighted_loss).float().to(ptu.device)
-    criterion1 = torch.nn.CrossEntropyLoss(reduce=False, ignore_index=0)
-    criterion2 = torch.nn.CrossEntropyLoss(reduce=False)
+    weights = torch.tensor(data_loader.unwrapped.weighted_loss).float().to(ptu.device)
+    # weights = np.array([1, 10, 2, 10, 10, 10, 10])
+    # weights = weights / np.sum(weights)
+    # weights = torch.tensor(weights).float().to(ptu.device)
+    # criterion1 = torch.nn.CrossEntropyLoss(reduce=False, ignore_index=0)
+    criterion2 = torch.nn.CrossEntropyLoss(reduce=False, weight=weights)
 
     logger = MetricLogger(delimiter="  ")
     header = f"Epoch: [{epoch}]"
@@ -34,34 +37,36 @@ def train_one_epoch(
     data_loader.set_epoch(epoch)
     num_updates = epoch * len(data_loader)
 
+    total_loss = 0
+
     for batch in logger.log_every(data_loader, print_freq, header):
         im = batch["im"].to(ptu.device)
         seg_gt = batch["segmentation"].long().to(ptu.device)
 
-        with amp_autocast():
-            seg_pred = model.forward(im)
+        # with amp_autocast():
+        seg_pred = model.forward(im)
 
-            # loss1 = 10 * criterion1(seg_pred, seg_gt).mean()
+        # loss1 = 10 * criterion1(seg_pred, seg_gt).mean()
 
-            loss2 = criterion2(seg_pred, seg_gt)
-            loss2 = hard_worst_loss(loss2, seg_gt)
+        loss2 = criterion2(seg_pred, seg_gt).mean()
+        # loss2 = hard_worst_loss(loss2, seg_gt)
 
-            loss = loss2
+        loss = loss2
 
-            # Convert input tensor to image
-            func = transforms.ToPILImage()
-            im_rgb = func(im[0])
+        # Convert input tensor to image
+        func = transforms.ToPILImage()
+        im_rgb = func(im[0])
 
-            # Convert prediction to image
-            seg_pred_img = seg_pred[0]
-            seg_pred_img = seg_pred_img.argmax(0, keepdim=True)
-            seg_pred_img = seg_pred_img.cpu().detach().numpy()[0]
-            
-            # Convert groundtruth to image
-            seg_gt_img = seg_gt.cpu().detach().numpy()[0]
+        # Convert prediction to image
+        seg_pred_img = seg_pred[0]
+        seg_pred_img = seg_pred_img.argmax(0, keepdim=True)
+        seg_pred_img = seg_pred_img.cpu().detach().numpy()[0]
+        
+        # Convert groundtruth to image
+        seg_gt_img = seg_gt.cpu().detach().numpy()[0]
 
-            print('Number of value in prediction ', np.unique(seg_pred_img))
-            print('Number of value in gt ', np.unique(seg_gt_img))
+        print('Number of value in prediction ', np.unique(seg_pred_img))
+        print('Number of value in gt ', np.unique(seg_gt_img))
 
 
         loss_value = loss.item()
@@ -91,6 +96,8 @@ def train_one_epoch(
             learning_rate=optimizer.param_groups[0]["lr"],
         )
 
+        total_loss += loss_value
+
     fig = plt.figure()
     fig.add_subplot(1, 3, 1)
     plt.imshow(im_rgb)
@@ -100,7 +107,7 @@ def train_one_epoch(
     plt.imshow(seg_gt_img)
     # plt.show()
 
-    neptune_stats = {'loss': loss_value, 'segmap': seg_pred_img, 'gtmap': seg_gt_img, 'fig': fig}
+    neptune_stats = {'loss': total_loss / len(data_loader), 'segmap': seg_pred_img, 'gtmap': seg_gt_img, 'fig': fig}
     return logger, neptune_stats
 
 

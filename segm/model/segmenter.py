@@ -43,7 +43,7 @@ class Segmenter(nn.Module):
 
         masks = self.decoder(x, (H, W))
         # masks = F.interpolate(masks, size=(H, W), mode="nearest")
-        masks = unpadding(masks, (H_ori, W_ori))
+        # masks = unpadding(masks, (H_ori, W_ori))
 
         return masks
 

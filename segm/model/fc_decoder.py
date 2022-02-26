@@ -1,4 +1,5 @@
 import math
+from tkinter.messagebox import NO
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -45,14 +46,18 @@ class Up(nn.Module):
     def forward(self, x1, x2=None):
         x1 = self.up(x1)
 
-        # # input is CxHxW
-        # diffY = x2.size()[2] - x1.size()[2]
-        # diffX = x2.size()[3] - x1.size()[3]
+        # input is CxHxW
+        # diffY = x1.size()[2] - x2.size()[2]
+        # diffX = x1.size()[3] - x2.size()[3]
 
-        # x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
+        # x2 = F.pad(x2, [diffX // 2, diffX - diffX // 2,
         #                 diffY // 2, diffY - diffY // 2])
+        if x2 is not None:
+            H, W = x1.size()[2], x1.size()[3]
+            x2 = F.interpolate(x2, size=(H, W), mode="nearest")
 
-        # x = torch.cat([x2, x1], dim=1)
+            x1 = torch.cat([x1, x2], dim=1)
+
         return self.conv(x1)
 
 
@@ -82,19 +87,27 @@ class DecoderUNet(nn.Module):
         self.inc = DoubleConv(n_channels, n_channels)
         factor = 1 if bilinear else 1
         self.up1 = Up(n_channels, (n_channels // 2) // factor, bilinear)
-        self.up2 = Up((n_channels // 2), (n_channels // 4) // factor, bilinear=True)
+        self.up2 = Up((n_channels //2), (n_channels // 4) // factor, bilinear)
         self.up3 = Up((n_channels // 4), (n_channels // 8) // factor, bilinear)
         self.up4 = Up((n_channels // 8), (n_channels // 16), bilinear)
-        self.outc = OutConv((n_channels // 16), n_classes)
+
+        self.fc = nn.Sequential(
+            nn.Linear((n_channels // 16), (n_channels // 16)),
+            nn.ReLU(True),
+            nn.Dropout(p=0.2),
+            nn.Linear((n_channels // 16), n_classes),
+            )
 
     def forward(self, x, im_size):
         x = x.contiguous().view(-1, self.n_channels, 32, 32)
-        x = self.inc(x)
-        x = self.up1(x)
-        x = self.up2(x)
-        x = self.up3(x)
-        x = self.up4(x)
+        x1 = self.inc(x)
+        x2 = self.up1(x1)
+        x3 = self.up2(x2)
+        x4 = self.up3(x3)
+        x5 = self.up4(x4)
 
-        logits = self.outc(x)
+        x = x5.permute(0, 2, 3, 1)
+        logits = self.fc(x)
+        logits = logits.permute(0, 3, 1, 2)
         return logits
 
