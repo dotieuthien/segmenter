@@ -6,51 +6,51 @@
   isthing: 0
   name: wall
 - color:
-  - 180
-  - 120
-  - 120
+  - 0
+  - 255
+  - 0
   id: 1
   isthing: 0
   name: building, edifice
 - color:
-  - 6
-  - 230
-  - 230
+  - 0
+  - 0
+  - 255
   id: 2
   isthing: 0
   name: sky
 - color:
-  - 80
-  - 50
-  - 50
+  - 255
+  - 255
+  - 0
   id: 3
   isthing: 0
   name: floor, flooring
 - color:
-  - 4
-  - 200
-  - 3
+  - 0
+  - 255
+  - 255
   id: 4
   isthing: 0
   name: tree
 - color:
-  - 120
-  - 120
-  - 80
+  - 255
+  - 0
+  - 255
   id: 5
   isthing: 0
   name: ceiling
 - color:
-  - 140
-  - 140
-  - 140
+  - 128
+  - 0
+  - 255
   id: 6
   isthing: 0
   name: road, route
 - color:
-  - 204
-  - 5
   - 255
+  - 0
+  - 128
   id: 7
   isthing: 0
   name: bed

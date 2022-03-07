@@ -8,6 +8,7 @@ import torch
 import click
 import argparse
 from torch.nn.parallel import DistributedDataParallel as DDP
+import matplotlib.pyplot as plt
 
 from segm.utils import distributed
 import segm.utils.torch as ptu
@@ -39,7 +40,7 @@ from neptune.new.types import File
 @click.option("--window-stride", default=None, type=int)
 @click.option("--backbone", default="", type=str)
 @click.option("--decoder", default="", type=str)
-@click.option("--optimizer", default="adam", type=str)
+@click.option("--optimizer", default="sgd", type=str)
 @click.option("--scheduler", default="polynomial", type=str)
 @click.option("--weight-decay", default=0.0, type=float)
 @click.option("--dropout", default=0.0, type=float)
@@ -74,11 +75,11 @@ def main(
     amp,
     resume,
 ):
-    # start distributed mode
+    # Start distributed mode
     ptu.set_gpu_mode(True)
     distributed.init_process()
 
-    # set up configuration
+    # Set up configuration
     cfg = config.load_config()
     model_cfg = cfg["model"][backbone]
     dataset_cfg = cfg["dataset"][dataset]
@@ -105,7 +106,7 @@ def main(
     decoder_cfg["name"] = decoder
     model_cfg["decoder"] = decoder_cfg
 
-    # dataset config
+    # Dataset config
     world_batch_size = dataset_cfg["batch_size"]
     num_epochs = dataset_cfg["epochs"]
     lr = dataset_cfg["learning_rate"]
@@ -125,7 +126,7 @@ def main(
     if normalization:
         model_cfg["normalization"] = normalization
 
-    # experiment config
+    # Experiment config
     batch_size = world_batch_size // ptu.world_size
 
     variant = dict(
@@ -215,14 +216,16 @@ def main(
         amp_autocast = torch.cuda.amp.autocast
         loss_scaler = NativeScaler()
 
-    # resume
+    # Resume
     if resume and checkpoint_path.exists():
         print(f"Resuming training from checkpoint: {checkpoint_path}")
         checkpoint = torch.load(checkpoint_path, map_location="cpu")
         model.load_state_dict(checkpoint["model"])
         optimizer.load_state_dict(checkpoint["optimizer"])
+
         if loss_scaler and "loss_scaler" in checkpoint:
             loss_scaler.load_state_dict(checkpoint["loss_scaler"])
+
         lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
         variant["algorithm_kwargs"]["start_epoch"] = checkpoint["epoch"] + 1
     else:
@@ -233,7 +236,7 @@ def main(
 
     # save config
     variant_str = yaml.dump(variant)
-    print(f"Configuration:\n{variant_str}")
+    # print(f"Configuration:\n{variant_str}")
     variant["net_kwargs"] = net_kwargs
     variant["dataset_kwargs"] = dataset_kwargs
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -257,13 +260,19 @@ def main(
     print(f"Encoder parameters: {num_params(model_without_ddp.encoder)}")
     print(f"Decoder parameters: {num_params(model_without_ddp.decoder)}")
 
-    run = neptune.init(
-    project="dotieuthien9997/segmenter",
-    api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiIzNGEyMTkxMS0xZWE5LTQ3NGEtYjMyNS0zYThlYWYwNzY2YTEifQ==",
-    )
-    
-    params = {"backbone": model_cfg["backbone"], "decoder": model_cfg["decoder"]}
-    run["parameters"] = params
+    use_neptune = True
+
+    if use_neptune:
+        run = neptune.init(
+        project="dotieuthien9997/segmenter",
+        api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiIzNGEyMTkxMS0xZWE5LTQ3NGEtYjMyNS0zYThlYWYwNzY2YTEifQ==",
+        )
+        params = {"backbone": model_cfg["backbone"], "decoder": model_cfg["decoder"]}
+        run["parameters"] = params
+    else:
+        run = None
+
+    fig = plt.figure()
 
     for epoch in range(start_epoch, num_epochs):
         # train for one epoch
@@ -273,7 +282,8 @@ def main(
                                        lr_scheduler,
                                        epoch,
                                        amp_autocast,
-                                       None,
+                                       loss_scaler,
+                                       fig,
                                        )
 
         # save checkpoint
@@ -309,12 +319,13 @@ def main(
             }
 
             # Log neptune
-            run["train/loss"].log(neptune_stats['loss'])
+            if run is not None:
+                run["train/loss"].log(neptune_stats['loss'])
 
-            if epoch % 10 == 0:
-                run['train/segmaps'].log(File.as_image(neptune_stats['segmap']))
-                run['train/segmaps'].log(File.as_image(neptune_stats['gtmap']))
-                run['train/matplotlib-fig'].log(neptune_stats['fig'])
+                if epoch % 10 == 0:
+                    run['train/segmaps'].log(File.as_image(neptune_stats['segmap']))
+                    run['train/segmaps'].log(File.as_image(neptune_stats['gtmap']))
+                    run['train/matplotlib-fig'].log(neptune_stats['fig'])
 
             val_stats = {}
             # if eval_epoch:
@@ -331,8 +342,10 @@ def main(
 
             with open(log_dir / "log.txt", "a") as f:
                 f.write(json.dumps(log_stats) + "\n")
-                
-    run.stop()
+
+    if run is not None:
+        run.stop()
+
     distributed.barrier()
     distributed.destroy_process()
     sys.exit(1)

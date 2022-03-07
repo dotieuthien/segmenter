@@ -38,11 +38,11 @@ def load_img(img_path, img_size):
     return pil_im, im
 
 
-# @click.command()
-# @click.option("--model-path", type=str)
-# @click.option("--input-dir", "-i", type=str, help="folder with input images")
-# @click.option("--output-dir", "-o", type=str, help="folder with output images")
-# @click.option("--gpu/--cpu", default=True, is_flag=True)
+@click.command()
+@click.option("--model-path", type=str)
+@click.option("--input-dir", "-i", type=str, help="folder with input images")
+@click.option("--output-dir", "-o", type=str, help="folder with output images")
+@click.option("--gpu/--cpu", default=True, is_flag=True)
 def process(model_path, input_dir, output_dir, gpu=True):
     """Infer Segmenter model
 
@@ -70,13 +70,30 @@ def process(model_path, input_dir, output_dir, gpu=True):
 
     list_dir = list(input_dir.iterdir())
 
-    for filename in tqdm(list_dir, ncols=80):
+    for filename in list_dir:
         # pil_im = Image.open(filename).copy()
         # im = F.pil_to_tensor(pil_im).float() / 255
         # im = F.normalize(im, normalization["mean"], normalization["std"])
         pil_im, im = load_img(filename, variant["inference_kwargs"]["im_size"])
         im = im.to(ptu.device).unsqueeze(0)
 
+        # im_meta = dict(flip=False)
+        # logits = inference(
+        #     model,
+        #     [im],
+        #     [im_meta],
+        #     ori_shape=im.shape[2:4],
+        #     window_size=variant["inference_kwargs"]["window_size"],
+        #     window_stride=variant["inference_kwargs"]["window_stride"],
+        #     batch_size=1,
+        # )
+        # seg_map = logits.argmax(0, keepdim=True)
+        # seg = seg_map.cpu().detach().numpy().astype(np.uint8)[0]
+        # pil_seg = Image.fromarray(seg)
+        # plt.imshow(pil_seg)
+        # plt.show()
+        # pil_seg.save(output_dir / filename.name)
+ 
         im_meta = dict(flip=False)
         logits = inference(
             model,
@@ -85,20 +102,17 @@ def process(model_path, input_dir, output_dir, gpu=True):
             ori_shape=im.shape[2:4],
             window_size=variant["inference_kwargs"]["window_size"],
             window_stride=variant["inference_kwargs"]["window_stride"],
-            batch_size=1,
+            batch_size=2,
         )
         seg_map = logits.argmax(0, keepdim=True)
-        seg = seg_map.cpu().detach().numpy().astype(np.uint8)[0]
-        pil_seg = Image.fromarray(seg)
-        plt.imshow(pil_seg)
-        plt.show()
-        pil_seg.save(output_dir / filename.name)
- 
-        # seg_rgb = seg_to_rgb(seg_map, cat_colors)
-        # seg_rgb = (255 * seg_rgb.cpu().numpy()).astype(np.uint8)
-        # pil_seg = Image.fromarray(seg_rgb[0])
+        seg_rgb = seg_to_rgb(seg_map, cat_colors)
+        seg_rgb = (255 * seg_rgb.cpu().numpy()).astype(np.uint8)
+        pil_seg = Image.fromarray(seg_rgb[0])
 
-        # pil_seg.save(output_dir / filename.name)
-        # pil_blend = Image.blend(pil_im, pil_seg, 0.5).convert("RGB")
-        # pil_blend.save(output_dir / filename.name)
+        pil_blend = Image.blend(pil_im, pil_seg, 0.5).convert("RGB")
+        pil_blend.save(output_dir / filename.name)
     return
+
+
+if __name__ == "__main__":
+    process()

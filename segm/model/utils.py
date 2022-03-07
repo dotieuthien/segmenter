@@ -139,6 +139,7 @@ def merge_windows(windows, window_size, ori_shape):
 
     logit = torch.zeros((C, H, W), device=im_windows.device)
     count = torch.zeros((1, H, W), device=im_windows.device)
+
     for window, (ha, wa) in zip(im_windows, anchors):
         logit[:, ha : ha + ws, wa : wa + ws] += window
         count[:, ha : ha + ws, wa : wa + ws] += 1
@@ -150,6 +151,7 @@ def merge_windows(windows, window_size, ori_shape):
     )[0]
     if flip:
         logit = torch.flip(logit, (2,))
+
     result = F.softmax(logit, 0)
     return result
 

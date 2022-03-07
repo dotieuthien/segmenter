@@ -41,7 +41,7 @@ def vit_base_patch8_384(pretrained=False, **kwargs):
 
 
 def create_vit(model_cfg):
-    """Create vision transformer model
+    """Create vision transformer encoder
 
     Args:
         model_cfg (_type_): _description_
@@ -133,11 +133,9 @@ def load_model(model_path):
     with open(variant_path, "r") as f:
         variant = yaml.load(f, Loader=yaml.FullLoader)
     net_kwargs = variant["net_kwargs"]
-
     model = create_segmenter(net_kwargs)
     data = torch.load(model_path, map_location=ptu.device)
     checkpoint = data["model"]
-
     model.load_state_dict(checkpoint, strict=True)
 
     return model, variant

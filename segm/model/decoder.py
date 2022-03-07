@@ -84,23 +84,21 @@ class MaskTransformer(nn.Module):
 
         # Linear layer
         x = self.proj_dec(x)
-        print('Size of class emb ', self.cls_emb.size())
         cls_emb = self.cls_emb.expand(x.size(0), -1, -1)
-        print('Size of x ', x.size())
         x = torch.cat((x, cls_emb), 1)
 
         for blk in self.blocks:
             x = blk(x)
 
         x = self.decoder_norm(x)
-        print('Size of decoder norm ', x.size())
 
         patches, cls_seg_feat = x[:, : -self.n_cls], x[:, -self.n_cls :]
+
         # Matmul operation
-        print('Size of proj_patch and prj_classes ', self.proj_patch.size(), self.proj_classes.size())
         patches = patches @ self.proj_patch
         cls_seg_feat = cls_seg_feat @ self.proj_classes
 
+        # Normalization
         patches = patches / patches.norm(dim=-1, keepdim=True)
         cls_seg_feat = cls_seg_feat / cls_seg_feat.norm(dim=-1, keepdim=True)
 

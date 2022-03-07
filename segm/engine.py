@@ -21,13 +21,12 @@ def train_one_epoch(
     epoch,
     amp_autocast,
     loss_scaler,
+    fig,
 ):
     weights = torch.tensor(data_loader.unwrapped.weighted_loss).float().to(ptu.device)
-    # weights = np.array([1, 10, 2, 10, 10, 10, 10])
-    # weights = weights / np.sum(weights)
-    # weights = torch.tensor(weights).float().to(ptu.device)
-    # criterion1 = torch.nn.CrossEntropyLoss(reduce=False, ignore_index=0)
-    criterion2 = torch.nn.CrossEntropyLoss(reduce=False, weight=weights)
+    weights = np.array([2.6601e-04, 8.2917e-01, 2.5110e-03, 5.9337e-02, 3.4045e-01, 1.0000e+00, 1.5043e-02])
+    weights = torch.tensor(weights).float().to(ptu.device)
+    criterion = torch.nn.CrossEntropyLoss(reduction='mean', weight=weights)
 
     logger = MetricLogger(delimiter="  ")
     header = f"Epoch: [{epoch}]"
@@ -40,34 +39,13 @@ def train_one_epoch(
     total_loss = 0
 
     for batch in logger.log_every(data_loader, print_freq, header):
+        # Input and groundtruth
         im = batch["im"].to(ptu.device)
         seg_gt = batch["segmentation"].long().to(ptu.device)
 
-        # with amp_autocast():
-        seg_pred = model.forward(im)
-
-        # loss1 = 10 * criterion1(seg_pred, seg_gt).mean()
-
-        loss2 = criterion2(seg_pred, seg_gt).mean()
-        # loss2 = hard_worst_loss(loss2, seg_gt)
-
-        loss = loss2
-
-        # Convert input tensor to image
-        func = transforms.ToPILImage()
-        im_rgb = func(im[0])
-
-        # Convert prediction to image
-        seg_pred_img = seg_pred[0]
-        seg_pred_img = seg_pred_img.argmax(0, keepdim=True)
-        seg_pred_img = seg_pred_img.cpu().detach().numpy()[0]
-        
-        # Convert groundtruth to image
-        seg_gt_img = seg_gt.cpu().detach().numpy()[0]
-
-        print('Number of value in prediction ', np.unique(seg_pred_img))
-        print('Number of value in gt ', np.unique(seg_gt_img))
-
+        with amp_autocast():
+            seg_pred = model.forward(im)
+            loss = criterion(seg_pred, seg_gt)
 
         loss_value = loss.item()
         
@@ -75,7 +53,6 @@ def train_one_epoch(
             print("Loss is {}, stopping training".format(loss_value), force=True)
 
         optimizer.zero_grad()
-
         if loss_scaler is not None:
             loss_scaler(
                 loss,
@@ -98,7 +75,21 @@ def train_one_epoch(
 
         total_loss += loss_value
 
-    fig = plt.figure()
+        # Convert input tensor to image for logger
+        func = transforms.ToPILImage()
+        im_rgb = func(im[0])
+
+        # Convert prediction to image
+        seg_pred_img = seg_pred[0]
+        seg_pred_img = seg_pred_img.argmax(0, keepdim=True)
+        seg_pred_img = seg_pred_img.cpu().detach().numpy()[0]
+        
+        # Convert groundtruth to image
+        seg_gt_img = seg_gt.cpu().detach().numpy()[0]
+
+        print('Number of value in prediction ', np.unique(seg_pred_img))
+        print('Number of value in gt ', np.unique(seg_gt_img))
+
     fig.add_subplot(1, 3, 1)
     plt.imshow(im_rgb)
     fig.add_subplot(1, 3, 2)
@@ -106,6 +97,8 @@ def train_one_epoch(
     fig.add_subplot(1, 3, 3)
     plt.imshow(seg_gt_img)
     # plt.show()
+
+    print('Total loss ', total_loss)
 
     neptune_stats = {'loss': total_loss / len(data_loader), 'segmap': seg_pred_img, 'gtmap': seg_gt_img, 'fig': fig}
     return logger, neptune_stats

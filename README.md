@@ -191,14 +191,16 @@ python -m segm.train --log-dir seg_tiny_mask --dataset ade20k \
 
 To train `Seg-B-Mask/16`, simply set `vit_base_patch16_384` as backbone and launch the above command using a minimum of 4 V100 GPUs (~12 minutes per epoch) and up to 8 V100 GPUs (~7 minutes per epoch). The code uses [SLURM](https://slurm.schedmd.com/documentation.html) environment variables.
 
+
 ## Train with Lizard dataset
+
 With the configuration `segm/config.yml`, you can change the parameters to train the model
 
 ```python
 python -m segm.train --log-dir runs/seg_tiny_unet \
   --dataset lizard \
   --dataset-dir path/to/lizard/dataset \
-  --backbone vit_custom_patch16_384 \
+  --backbone vit_tiny_patch16_384 \
   --decoder unet
 ```
 
